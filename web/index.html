@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>California house-price predictor</title>
+<meta name="description" content="Put a pin on California, describe the neighbourhood, and a machine-learning model trained on 1990 census data estimates its median house value. Runs entirely in your browser.">
+<meta name="theme-color" content="#EDF0EE">
+<meta property="og:title" content="California house-price predictor">
+<meta property="og:description" content="An interactive map and price estimator built from 1990 census districts. CA2 Predictive Analysis project, Lovely Professional University.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%236F1D5C'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23EDF0EE'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#predictor">Skip to the predictor</a>
+<header class="top">
+  <a class="brand" href="#top">California house-price predictor</a>
+  <nav aria-label="Sections">
+    <a href="#predictor">Predictor</a>
+    <a href="#accuracy">Accuracy</a>
+    <a href="#learned">What it learned</a>
+    <a href="#questions">Findings</a>
+    <a href="#limits">Limits</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="intro">
+    <h1>What would the homes in a California neighbourhood sell for?</h1>
+    <p class="lede">Drop a pin on the map, describe the neighbourhood, and a model trained on the 1990 US census estimates its median house value. Every dot is a real district the model never saw while learning, so you can compare its estimates with what really happened.</p>
+  </section>
+
+  <noscript><p class="notice">This page needs JavaScript: the prediction model runs in your browser.</p></noscript>
+
+  <section class="workspace" id="predictor" aria-label="Map and price estimator">
+    <div class="mapcol">
+      <div class="maptools">
+        <fieldset class="seg">
+          <legend class="vh">Colour the dots by</legend>
+          <label><input type="radio" name="mode" value="actual" checked><span>Actual value</span></label>
+          <label><input type="radio" name="mode" value="pred"><span>Model estimate</span></label>
+          <label><input type="radio" name="mode" value="err"><span>Model error</span></label>
+        </fieldset>
+        <div class="legend" id="legend" aria-hidden="true"></div>
+      </div>
+      <div class="mapwrap">
+        <canvas id="map" tabindex="0" role="img" aria-label="Map of California census districts. Press arrow keys to move the pin."></canvas>
+        <div id="tip" class="tip" hidden></div>
+        <p class="vh" id="mapstatus" aria-live="polite"></p>
+      </div>
+      <p class="mapnote">Each dot is a census district from the 20 % of the data held back for testing. Squares mark the five cities the model measures distance to. Click the map, or focus it and use the arrow keys, to move the pin.</p>
+    </div>
+
+    <aside class="panel" aria-label="Estimate">
+      <div class="result" aria-live="polite">
+        <h2>Estimated median house value</h2>
+        <p class="price" id="price">…</p>
+        <p class="range" id="range"></p>
+        <p class="caveat" id="caveat"></p>
+      </div>
+
+      <div class="controls">
+        <h2>Describe the district</h2>
+        <div class="presets" role="group" aria-label="Example places">
+          <button type="button" data-preset="bay">Bay Area suburb</button>
+          <button type="button" data-preset="la">Los Angeles coast</button>
+          <button type="button" data-preset="valley">Central Valley town</button>
+          <button type="button" data-preset="north">Northern interior</button>
+        </div>
+
+        <div class="field"><label for="income">Typical household income</label><output id="income_o" for="income"></output>
+          <input id="income" type="range" min="0.5" max="15" step="0.1" value="3.5"></div>
+        <div class="field"><label for="age">Typical age of the houses</label><output id="age_o" for="age"></output>
+          <input id="age" type="range" min="1" max="52" step="1" value="29"></div>
+        <div class="field"><label for="hh">Households in the district</label><output id="hh_o" for="hh"></output>
+          <input id="hh" type="range" min="50" max="2500" step="10" value="410"></div>
+        <div class="field"><label for="rpp">Rooms per household</label><output id="rpp_o" for="rpp"></output>
+          <input id="rpp" type="range" min="2" max="12" step="0.1" value="5.4"></div>
+        <div class="field"><label for="bed">Bedrooms as a share of all rooms</label><output id="bed_o" for="bed"></output>
+          <input id="bed" type="range" min="0.1" max="0.5" step="0.01" value="0.21"></div>
+        <div class="field"><label for="pph">People per household</label><output id="pph_o" for="pph"></output>
+          <input id="pph" type="range" min="1" max="8" step="0.1" value="2.8"></div>
+
+        <div class="pair">
+          <div class="field"><label for="lat">Latitude</label><input id="lat" type="number" min="32.4" max="42.1" step="0.01" inputmode="decimal"></div>
+          <div class="field"><label for="lon">Longitude</label><input id="lon" type="number" min="-124.6" max="-114.1" step="0.01" inputmode="decimal"></div>
+        </div>
+        <div class="field"><label for="ocean">Closeness to the ocean</label>
+          <select id="ocean"></select>
+          <p class="hint" id="oceanhint">Set from the nearest district when you move the pin; change it if you know better.</p></div>
+        <p class="derived" id="derived"></p>
+        <p class="warn" id="warn" hidden></p>
+      </div>
+
+      <div class="near">
+        <h2>Closest districts in the data</h2>
+        <table>
+          <thead><tr><th scope="col">Distance</th><th scope="col">Income</th><th scope="col">Actual</th><th scope="col">Model</th></tr></thead>
+          <tbody id="neartable"></tbody>
+        </table>
+      </div>
+    </aside>
+  </section>
+
+  <section class="band" id="accuracy">
+    <div class="col">
+      <h2>How accurate is it?</h2>
+      <p id="acc_text"></p>
+      <table class="models" id="models">
+        <caption>Seven models compared on the {N} held-out test districts. Shorter bars are better.</caption>
+        <thead><tr><th scope="col">Model</th><th scope="col">Typical error (RMSE)</th><th scope="col">Average miss (MAE)</th><th scope="col">Variance explained (R²)</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p>RMSE punishes big misses more than small ones, so it is always larger than MAE. The two linear Ridge models show why the target matters: fitting the logarithm of price gives smaller percentage errors but a larger dollar error.</p>
+    </div>
+  </section>
+
+  <section class="band alt" id="learned">
+    <div class="col">
+      <h2>What the model learned</h2>
+      <p>The model weighs where a district is, what its households earn and how crowded its homes are. The plot below shows each district as a dot: red dots had a high value for that feature, blue dots a low one, and the position says how much that pushed the estimate up (right) or down (left).</p>
+      <figure><img src="assets/fig19_shap_summary.png" alt="SHAP summary plot ranking the features that drive predictions" loading="lazy" width="1500" height="1159"><figcaption>Feature influence on 1,500 test districts (SHAP values). Income pushes estimates up; inland location and crowded households push them down.</figcaption></figure>
+      <figure><img src="assets/fig20_partial_dependence.png" alt="Partial dependence of predicted value on income, house age and location" loading="lazy" width="1500" height="425"><figcaption>Average effect of income, house age and location on the estimate. Income has a steady, accelerating effect; house age matters little; the coast carries a clear premium.</figcaption></figure>
+      <figure><img src="assets/fig13_pred_vs_actual.png" alt="Predicted against actual house value on the test set" loading="lazy" width="1112" height="1027"><figcaption>Estimates against actual values. Points on the red line are perfect; the vertical stack at $500,001 is the cap in the data.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="band" id="questions">
+    <div class="col">
+      <h2>Six questions the project answered</h2>
+      <dl class="qa" id="qa"></dl>
+    </div>
+  </section>
+
+  <section class="band alt" id="limits">
+    <div class="col">
+      <h2>Where it falls short</h2>
+      <p><strong>These are 1990 prices.</strong> The estimates describe what a district's median house was worth in 1990, not today. This is a learning project that demonstrates a method; do not use it to value a home.</p>
+      <p><strong>The data stops at $500,001.</strong> Any district worth more was recorded at the cap, so the model rarely predicts above about $500,000 and under-predicts the most expensive districts.</p>
+      <p><strong>New regions are harder than new districts.</strong> Prices are strongly clustered in space, and the held-back districts sit next to ones the model trained on. Estimates for a place far from any district in the data deserve less trust; the page warns you when a pin is far from the data.</p>
+      <p><strong>Districts, not houses.</strong> Each row is a census block group of roughly 600 to 3,000 people, so the model says something about neighbourhoods, not individual homes.</p>
+      <div class="gallery">
+        <figure><img src="assets/fig04_geography.png" alt="Map of house value and ocean proximity classes" loading="lazy" width="1500" height="644"><figcaption>Where the districts are and how ocean proximity is classified.</figcaption></figure>
+        <figure><img src="assets/fig17_residual_map.png" alt="Map of model errors on the test set" loading="lazy" width="1202" height="1089"><figcaption>Model errors on the map: blue districts were under-estimated, red over-estimated.</figcaption></figure>
+        <figure><img src="assets/fig06_income_relationship.png" alt="Income against house value" loading="lazy" width="1500" height="569"><figcaption>Income and house value, with the cap visible as a flat band at the top.</figcaption></figure>
+        <figure><img src="assets/fig08_ocean_proximity.png" alt="House value by ocean proximity" loading="lazy" width="1500" height="866"><figcaption>House value by closeness to the ocean.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="col">
+    <p><strong>CA2 Predictive Analysis project (INT234)</strong><br>Sadu Ram Charan, Lovely Professional University</p>
+    <p>Data: California Housing Prices, 1990 US Census (Pace and Barry, 1997). Model: XGBoost, trained in Python and run here in JavaScript. Nothing you enter leaves your browser.</p>
+    <p id="repo" hidden><a id="repolink" href="#">Source code, notebook and report</a></p>
+  </div>
+</footer>
+<script src="predictor.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

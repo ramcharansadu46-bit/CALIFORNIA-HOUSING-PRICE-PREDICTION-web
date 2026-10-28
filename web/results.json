@@ -1,0 +1,89 @@
+{
+ "best": "XGBoost",
+ "models": [
+  {
+   "name": "XGBoost",
+   "cv_rmse": 42926.4499,
+   "rmse": 40980.229,
+   "mae": 26522.4172,
+   "r2": 0.8711
+  },
+  {
+   "name": "HistGB",
+   "cv_rmse": 44996.0424,
+   "rmse": 43023.897,
+   "mae": 28095.1857,
+   "r2": 0.858
+  },
+  {
+   "name": "Random Forest",
+   "cv_rmse": 45487.913,
+   "rmse": 43613.184,
+   "mae": 28204.9188,
+   "r2": 0.8541
+  },
+  {
+   "name": "k-NN",
+   "cv_rmse": 56183.7924,
+   "rmse": 53768.3303,
+   "mae": 36199.4349,
+   "r2": 0.7782
+  },
+  {
+   "name": "Ridge",
+   "cv_rmse": 63388.7697,
+   "rmse": 62097.6243,
+   "mae": 45172.9157,
+   "r2": 0.7041
+  },
+  {
+   "name": "Ridge (log-target)",
+   "cv_rmse": 74289.0695,
+   "rmse": 71013.7124,
+   "mae": 43774.7935,
+   "r2": 0.6131
+  },
+  {
+   "name": "Dummy (mean)",
+   "cv_rmse": 115698.6298,
+   "rmse": 114165.2703,
+   "mae": 90806.7885,
+   "r2": -0.0
+  }
+ ],
+ "medape": 9.6534,
+ "within20": 78.4157,
+ "rmse": 40980.229,
+ "mae": 26522.4172,
+ "r2": 0.8711,
+ "cap": 500001,
+ "n_test": 4128,
+ "n_train": 16512,
+ "baseline_rmse": 114165.2703,
+ "findings": [
+  {
+   "q": "Can the 207 missing bedroom counts be filled in safely?",
+   "a": "Yes. Missingness shows no relation to other variables, and a k-NN imputer recovers hidden values with an error of 59 rooms against 420 for the median. The effect on price prediction is negligible."
+  },
+  {
+   "q": "How strongly does income drive house value?",
+   "a": "Strongly: correlation 0.69. Every extra $10,000 of district income goes with about $41,736 more in house value, though income alone explains only 47 % of the variation."
+  },
+  {
+   "q": "Does location matter beyond income?",
+   "a": "A great deal. Ocean proximity has a large effect and prices are strongly clustered in space (Moran's I = 0.79). Adding distances to five major cities cut error by 3.0 % for a linear model and 1.7 % for gradient boosting."
+  },
+  {
+   "q": "Do per-household ratios help?",
+   "a": "Yes, modestly and consistently: rooms, bedrooms and people per household cut error by 1.5 % to 2.7 %, and every comparison was statistically significant."
+  },
+  {
+   "q": "Which model predicts best?",
+   "a": "XGBoost, with a test error (RMSE) of $40,980 and R\u00b2 of 0.87. It beats the runner-up, HistGB, by a small but statistically reliable margin."
+  },
+  {
+   "q": "Where does it go wrong?",
+   "a": "On the most expensive districts. Values are capped at $500,001 in the data; those districts are 4.3 % of the test set but cause 16 % of the squared error."
+  }
+ ]
+}
